@@ -62,11 +62,10 @@ class FileManager;
 class File {
 public:
     explicit File(const fs::path &p, int flags) : p(p) {
-        if (!fs::exists(p)) {
-            throw std::runtime_error("No such file: " + p.string());
-        }
+        // if (!fs::exists(p)) {
+        //     throw std::runtime_error("No such file: " + p.string());
+        // }
 
-        fd = FileDescriptor(p.c_str(), flags);
         s = fs::status(p);
     }
 
@@ -85,6 +84,7 @@ public:
     }
 
     std::vector<char> getContent(bool verbose) const {
+        FileDescriptor fd(p.c_str(), O_RDONLY);
         size_t fsize = fd.getFileSize();
         size_t current_size = 0;
         
@@ -119,6 +119,7 @@ public:
     }
 
     void writeToFile(const std::vector<char> &content) {
+        FileDescriptor fd(p.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
         size_t current_size = 0;
         size_t content_size = content.size();
 
@@ -155,7 +156,6 @@ public:
     }
 
 protected:
-    FileDescriptor fd;
     fs::path p;
     fs::file_status s;
     FileSystem fs;
@@ -170,7 +170,7 @@ public:
 
     virtual void copyFrom(const File &src) override {
         if (fs == src.getFileSystem()) {
-            link(src.getPath().string().c_str(), p.string().c_str());
+            link(src.getPath().string().c_str(), p.string().c_str());                               //errno
         } else {
             auto content = src.getContent(true);
             writeToFile(content);
@@ -183,7 +183,7 @@ public:
     explicit SymlinkFile(const fs::path &p, int flags) : File(p, flags) {};
 
     virtual void copyFrom(const File &src) override {
-        symlink(src.getPath().string().c_str(), p.string().c_str());
+        symlink(src.getPath().string().c_str(), p.string().c_str());                                //errno
     }
 };
 
@@ -192,9 +192,7 @@ public:
     FileManager(const fs::path &p) : p(p) {};
 
     void buildCreateFileIfNecessary() {
-        if (!fs::exists(p)) {
-            fs::create_directories(p);
-        }
+        
     }
 
     std::unique_ptr<SymlinkFile> buildSymlinkFile(int flags) {
@@ -230,7 +228,22 @@ private:
 
 class CopyManager {
 public:
-    CopyManager(const fs::path src, const fs::path dst) : src(src), dst(dst) {};
+    CopyManager(const fs::path &src_, const fs::path &dst_) : src(src_), dst(dst_) {
+        if (dst.filename().empty()) {
+            if (!fs::exists(dst)) {
+                fs::create_directories(dst);
+            }
+        } else {
+            if (!fs::exists(dst.parent_path())) {
+                fs::create_directories(dst.parent_path());
+            }
+        }
+
+        if (fs::is_directory(dst)) {
+            dst = dst / src.filename();
+        }
+        std::cout << dst << std::endl;
+    };
 
     void copy() {
         FileManager fm_src(src);
