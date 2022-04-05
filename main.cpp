@@ -1,288 +1,161 @@
 #include <filesystem>
 #include <iostream>
-#include <sys/vfs.h>
 #include <vector>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
-#include <stdio.h>
-#include <sys/file.h>
 #include <unistd.h>
-#include <memory>
-#include <string.h>
+#include "file/FileUtils.h"
+
+static constexpr size_t READ_CHUNK_SIZE = 4 * 1024;
+static constexpr size_t WRITE_CHUNK_SIZE = 4 * 1024;
 
 namespace fs = std::filesystem;
 
-struct FileSystem {
-    bool operator==(const FileSystem &other_fs) const {
-        return true;
-    }
-};
+fs::path process_existed_path(const fs::path &src, const fs::path &dst) {
+    fs::file_status s = fs::status(dst);
+    std::cout << dst << std::endl;
 
-class FileDescriptor {
-public:
-    FileDescriptor() = default;
-
-    explicit FileDescriptor(const char* fn, int flags) {
-        errno = 0;
-        descr = open(fn, flags);
-        if (descr < 0) {
-            throw std::runtime_error(strerror(errno));
-        }
-    }
-
-    ~FileDescriptor() {
-        close(descr);
-    }
-
-    int getDescriptor() const {
-        return descr;
-    }
-
-    size_t getFileSize() const {
-        struct stat statbuf = {};
-        errno = 0;
-        int ret_code = fstat(descr, &statbuf);
-
-        if (ret_code != 0) {
-            throw std::runtime_error(strerror(errno));
-        }
-
-        return statbuf.st_size;
-    }
-    
-private:
-    int descr;
-};
-
-class FileManager;
-
-class File {
-public:
-    explicit File(const fs::path &p, int flags) : p(p) {
-        // if (!fs::exists(p)) {
-        //     throw std::runtime_error("No such file: " + p.string());
-        // }
-
-        s = fs::status(p);
-    }
-
-    virtual ~File() {};
-
-    std::string getName() const {
-        return p.filename().string();
-    }
-
-    FileSystem getFileSystem() const {
-        return fs;
-    }
-
-    const fs::path &getPath() const {
-        return p;
-    }
-
-    std::vector<char> getContent(bool verbose) const {
-        FileDescriptor fd(p.c_str(), O_RDONLY);
-        size_t fsize = fd.getFileSize();
-        size_t current_size = 0;
-        
-        std::vector<char> file(fsize);
-
-        while(current_size < fsize) {
-            size_t want_to_read = std::min(READ_CHUNK_SIZE, fsize - current_size);
-            errno = 0;
-            ssize_t readed = read(fd.getDescriptor(), file.data() + current_size, want_to_read);
-            
-            if (readed == -1) {
-                switch (errno) {
-                case EAGAIN:
-                case EINTR:
-                    continue;
-                
-                default:
-                    throw std::runtime_error("Something wrong with file: " + std::string(strerror(errno)));
-                }
-            } else if (readed == 0) {
-                throw std::runtime_error("File trunkated! Current size: " + std::to_string(current_size) + ", expected size: " + std::to_string(fsize));
-            }
-
-            current_size += readed;
-
-            if (readed != want_to_read) {
-                std::cout << "WARNING: Readed " << readed << std::endl;
-            }
-        }
-
-        return file;
-    }
-
-    void writeToFile(const std::vector<char> &content) {
-        FileDescriptor fd(p.c_str(), O_CREAT | O_WRONLY | O_TRUNC);
-        size_t current_size = 0;
-        size_t content_size = content.size();
-
-        while(current_size < content_size) {
-            size_t want_to_write = std::min(READ_CHUNK_SIZE, content_size - current_size);
-            errno = 0;
-            ssize_t writed = write(fd.getDescriptor(), content.data() + current_size, want_to_write);
-            
-            if (writed == -1) {
-                switch (errno) {
-                case EAGAIN:
-                case EINTR:
-                    continue;
-                
-                default:
-                    throw std::runtime_error("Something wrong with file: " + std::string(strerror(errno)));
-                }
-            } else if (writed == 0) {
-                throw std::runtime_error("File trunkated! Current size: " + std::to_string(current_size) + ", expected size: " + std::to_string(content_size));
-            }
-
-            current_size += writed;
-
-            if (writed != want_to_write) {
-                std::cout << "WARNING: Writed " << writed << std::endl;
-            }
-        }
-    }
-
-    virtual void copyFrom(const File &src) = 0;
-
-    fs::file_type getStatus() {
-        return s.type();
-    }
-
-protected:
-    fs::path p;
-    fs::file_status s;
-    FileSystem fs;
-
-    static constexpr size_t READ_CHUNK_SIZE = 4 * 1024;
-    static constexpr size_t WRITE_CHUNK_SIZE = 4 * 1024;
-};
-
-class RegularFile : public File {
-public:
-    explicit RegularFile(const fs::path &p, int flags) : File(p, flags) {};
-
-    virtual void copyFrom(const File &src) override {
-        if (fs == src.getFileSystem()) {
-            link(src.getPath().string().c_str(), p.string().c_str());                               //errno
-        } else {
-            auto content = src.getContent(true);
-            writeToFile(content);
-        }
-    }
-};
-
-class SymlinkFile : public File {
-public:
-    explicit SymlinkFile(const fs::path &p, int flags) : File(p, flags) {};
-
-    virtual void copyFrom(const File &src) override {
-        symlink(src.getPath().string().c_str(), p.string().c_str());                                //errno
-    }
-};
-
-class FileManager {
-public:
-    FileManager(const fs::path &p) : p(p) {};
-
-    void buildCreateFileIfNecessary() {
-        
-    }
-
-    std::unique_ptr<SymlinkFile> buildSymlinkFile(int flags) {
-        return std::make_unique<SymlinkFile>(p, flags);
-    }
-    
-    std::unique_ptr<RegularFile> buildRegularFile(int flags) {
-        return std::make_unique<RegularFile>(p, flags);
-    }
-
-    std::unique_ptr<File> build(int flags) {
-        if (!fs::exists(p)) {
-            throw std::runtime_error("File does not exists");
-        }
-
-        fs::file_status s = fs::status(p);
-
-        switch(s.type()) {
+    switch (s.type()) {
         case fs::file_type::regular:
-            return buildRegularFile(flags);
-        case fs::file_type::symlink:
-            return buildSymlinkFile(flags);
+        case fs::file_type::symlink:    //is for symlink too?
+            fs::remove(dst);
+            return dst;
+
+        case fs::file_type::directory:
+            if (fs::exists(dst / src.filename())) {
+                fs::remove(dst / src.filename());
+            }
+            return dst / src.filename();
+
         default:
             throw std::runtime_error("Unsupported file status");
-            break;
+    }
+}
+
+fs::path process_unexisted_path(const fs::path &src, const fs::path &dst) {
+    if (dst.filename().empty()) {
+        if (!fs::exists(dst)) {
+            fs::create_directories(dst);
+        }
+
+        return dst / src.filename();
+    } else if (!dst.parent_path().empty()) {
+        if (!fs::exists(dst.parent_path())) {
+            fs::create_directories(dst.parent_path());
         }
     }
 
-private:
-    fs::path p;
-};
+    return dst;
+}
 
+fs::path process_path(const fs::path &src, const fs::path &dst) {
+    if (fs::exists(dst)) {
+        return process_existed_path(src, dst);
+    } else {
+        return process_unexisted_path(src, dst);
+    }
+}
 
-class CopyManager {
-public:
-    CopyManager(const fs::path &src_, const fs::path &dst_) : src(src_), dst(dst_) {
-        if (dst.filename().empty()) {
-            if (!fs::exists(dst)) {
-                fs::create_directories(dst);
+std::vector<char> get_content(const fs::path &p) {
+    FileDescriptor fd(p.c_str(), O_RDONLY);
+    size_t fsize = fd.getFileSize();
+    size_t current_size = 0;
+
+    std::vector<char> file(fsize);
+
+    while(current_size < fsize) {
+        size_t want_to_read = std::min(READ_CHUNK_SIZE, fsize - current_size);
+        errno = 0;
+        ssize_t readed = read(fd.getDescriptor(), file.data() + current_size, want_to_read);
+
+        if (readed == -1) {
+            switch (errno) {
+                case EAGAIN:
+                case EINTR:
+                    continue;
+
+                default:
+                    throw std::runtime_error("Something wrong with file (READ): " + std::string(strerror(errno)));
             }
-        } else {
-            if (!fs::exists(dst.parent_path())) {
-                fs::create_directories(dst.parent_path());
-            }
+        } else if (readed == 0) {
+            throw std::runtime_error("File trunkated! Current size: " + std::to_string(current_size) + ", expected size: " + std::to_string(fsize));
         }
 
-        if (fs::is_directory(dst)) {
-            dst = dst / src.filename();
+        current_size += readed;
+
+        if (readed != want_to_read) {
+            std::cout << "WARNING: Readed " << readed << std::endl;
         }
-        std::cout << dst << std::endl;
-    };
+    }
+    std::cout << "READED " << current_size << " of " << fsize << std::endl;
+    return file;
+}
 
-    void copy() {
-        FileManager fm_src(src);
-        FileManager fm_dst(dst);
+void write_content(const fs::path &p, const std::vector<char> &content) {
+    FileDescriptor fd(p.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+    size_t current_size = 0;
+    size_t content_size = content.size();
+    std::cout << "Written " << current_size << " of " << content_size << std::endl;
 
-        auto src_file = fm_src.build(O_RDONLY);
-        std::unique_ptr<File> dst_file;
+    while(current_size < content_size) {
+        std::cout << "Written " << current_size << " of " << content_size << std::endl;
+        size_t want_to_write = std::min(WRITE_CHUNK_SIZE, content_size - current_size);
+        errno = 0;
+        ssize_t writed = write(fd.getDescriptor(), content.data() + current_size, want_to_write);
 
-        switch (src_file->getStatus()) {
-            case fs::file_type::regular: {
-                dst_file = fm_dst.buildRegularFile(O_WRONLY);
-                break;
+        if (writed == -1) {
+            switch (errno) {
+                case EAGAIN:
+                case EINTR:
+                    continue;
+
+                default:
+                    throw std::runtime_error("Something wrong with file (WRITE): " + std::string(strerror(errno)));
             }
+        } else if (writed == 0) {
+            throw std::runtime_error("File trunkated! Current size: " + std::to_string(current_size) + ", expected size: " + std::to_string(content_size));
+        }
 
-            case fs::file_type::symlink: {
-                dst_file = fm_dst.buildSymlinkFile(O_WRONLY);
+        current_size += writed;
+
+        if (writed != want_to_write) {
+            std::cout << "WARNING: Writed " << writed << std::endl;
+        }
+    }
+}
+
+void copy_content(const fs::path &src, const fs::path &dst) {
+    std::cout << src << ' ' << dst << std::endl;
+    write_content(dst, get_content(src));
+}
+
+void copy_main(const fs::path &src, const fs::path &dst) {
+    errno = 0;
+    int res = linkat(0, fs::absolute(src).string().c_str(), 0, fs::absolute(dst).string().c_str(), 0);
+    if (res != 0) {
+        switch (errno) {
+            case EXDEV:
+                std::cout << "Different file systems!" << std::endl;
+                copy_content(src, dst);
                 break;
-            }
 
             default:
-                throw std::runtime_error("Unsupported file status");
-                break;
+                throw std::runtime_error("Something wrong with file: " + std::string(strerror(errno)));
         }
-        dst_file->copyFrom(*src_file);
     }
-
-private:
-    fs::path src;
-    fs::path dst;
-};
-
+}
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
+    if (argc != 3) {
         std::cerr << "Not enough arguments" << std::endl;
         return EXIT_FAILURE;
     }
 
-    CopyManager cm(argv[1], argv[2]);
-    cm.copy();
+    fs::path src = argv[1];
+    fs::path dst = argv[2];
+    dst = process_path(src, dst);
+    copy_main(src, dst);
 }
 
