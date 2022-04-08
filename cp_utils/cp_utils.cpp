@@ -5,6 +5,22 @@
 #include "../file/FileUtils.h"
 #include <fcntl.h>
 
+void printProgress(float progress, const std::string &msg) {
+    static constexpr size_t percentage_offset = 4;
+
+    int barLength = 30;
+    int pos = progress * barLength;
+
+    std::cout << msg << " [";
+    for (int i = 0; i != barLength; ++i) {
+        if (i < pos)
+            std::cout << "#";
+        else
+            std::cout << " ";
+    }
+    std::cout << "] " << std::setw(percentage_offset) << (int) (progress * 100) << "%\r";
+}
+
 fs::path path_processing::process_existed_path(const fs::path &src, const fs::path &dst) {
     fs::file_status s = fs::status(dst);
 
@@ -79,7 +95,9 @@ std::vector<char> my_cp::get_content(const fs::path &p) {
         if (readed != want_to_read) {
             std::cout << "WARNING: Readed " << readed << std::endl;
         }
+        printProgress((float) current_size / fsize, "Read progress");
     }
+    std::cout << std::endl;
     return file;
 }
 
@@ -111,7 +129,9 @@ void my_cp::write_content(const fs::path &p, const std::vector<char> &content) {
         if (writed != want_to_write) {
             std::cout << "WARNING: Writed " << writed << std::endl;
         }
+        printProgress((float) current_size / content_size, "Write progress ");
     }
+    std::cout << std::endl;
 }
 
 void my_cp::copy_content(const fs::path &src, const fs::path &dst) {
@@ -119,11 +139,15 @@ void my_cp::copy_content(const fs::path &src, const fs::path &dst) {
 }
 
 void my_cp::symlink_copy(const fs::path &src, const fs::path &dst) {
+    auto src_str = src.string();
+    auto dst_str = dst.string();
+
     errno = 0;
-    int ret_code = symlink(fs::absolute(src).string().c_str(), fs::absolute(dst).string().c_str());
+    int ret_code = symlink(src_str.c_str(), dst_str.c_str());
     if (ret_code != 0) {
         throw std::runtime_error(strerror(errno));
     }
+    std::cout << "File successfully sym-linked!" << std::endl;
 }
 
 void my_cp::hardlink_copy(const fs::path &src, const fs::path &dst) {
@@ -142,13 +166,17 @@ void my_cp::hardlink_copy(const fs::path &src, const fs::path &dst) {
             default:
                 throw std::runtime_error("Something wrong with file: " + std::string(strerror(errno)));
         }
+    } else {
+        std::cout << "File successfully hard-linked!" << std::endl;
     }
 }
 
 void my_cp::copy_main(const fs::path &src, const fs::path &dst) {
     if (fs::is_symlink(src)) {
+        std::cout << "`src` is a sym-link. Trying to create a sym-link." << std::endl;
         symlink_copy(src, dst);
     } else {
+        std::cout << "Trying to create a hard-link." << std::endl;
         hardlink_copy(src, dst);
     }
 }
