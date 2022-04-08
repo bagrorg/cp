@@ -16,9 +16,17 @@ int main(int argc, char *argv[]) {
 
     fs::path src = argv[1];
     fs::path dst = argv[2];
-    validate_input(src, dst);
+    src = fs::absolute(src);
+    dst = fs::absolute(dst);
 
-    dst = path_processing::process_path(src, dst);
-    my_cp::copy_main(src, dst);
+    try {
+        validate_input(src, dst);
+
+        dst = path_processing::process_path(src, dst);
+        my_cp::copy_main(src, dst);
+    } catch(const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 }
 
