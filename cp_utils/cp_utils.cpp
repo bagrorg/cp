@@ -7,7 +7,6 @@
 
 fs::path path_processing::process_existed_path(const fs::path &src, const fs::path &dst) {
     fs::file_status s = fs::status(dst);
-    std::cout << dst << std::endl;
 
     switch (s.type()) {
         case fs::file_type::regular:
@@ -128,11 +127,11 @@ void my_cp::symlink_copy(const fs::path &src, const fs::path &dst) {
 }
 
 void my_cp::hardlink_copy(const fs::path &src, const fs::path &dst) {
-    const char *src_abs = fs::absolute(src).string().c_str();
-    const char *dst_abs = fs::absolute(dst).string().c_str();
+    auto src_str = src.string();
+    auto dst_str = dst.string();
 
     errno = 0;
-    int res = linkat(0, src_abs, 0, dst_abs, 0);        //todo: flags?
+    int res = linkat(0, src_str.c_str(), 0, dst_str.c_str(), 0);        //todo: flags?
     if (res != 0) {
         switch (errno) {
             case EXDEV:
