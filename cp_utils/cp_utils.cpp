@@ -118,7 +118,7 @@ void my_cp::copy_content(const fs::path &src, const fs::path &dst) {
     write_content(dst, get_content(src));
 }
 
-void my_cp::hardlink_copy(const fs::path &src, const fs::path &dst) {
+void my_cp::copy_main(const fs::path &src, const fs::path &dst) {
     auto src_str = src.string();
     auto dst_str = dst.string();
 
@@ -137,11 +137,6 @@ void my_cp::hardlink_copy(const fs::path &src, const fs::path &dst) {
     } else {
         std::cout << "File successfully hard-linked!" << std::endl;
     }
-}
-
-void my_cp::copy_main(const fs::path &src, const fs::path &dst) {
-    std::cout << "Trying to create a hard-link." << std::endl;
-    hardlink_copy(src, dst);
 }
 
 
