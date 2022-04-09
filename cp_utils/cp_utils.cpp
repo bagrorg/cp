@@ -24,36 +24,16 @@ void printProgress(float progress, const std::string &msg) {
 fs::path path_processing::process_existed_path(const fs::path &src, const fs::path &dst) {
     fs::file_status s = fs::status(dst);
 
-    switch (s.type()) {
-        case fs::file_type::regular:
-        case fs::file_type::symlink:
-            fs::remove(dst);
-            return dst;
-
-        case fs::file_type::directory:
-            if (fs::exists(dst / src.filename())) {
-                fs::remove(dst / src.filename());
-            }
-            return dst / src.filename();
-
-        default:
-            throw std::runtime_error("Unsupported file status");
+    if (s.type() == fs::file_type::directory) {
+        return dst / src.filename();
     }
+    return dst;
 }
 
 fs::path path_processing::process_unexisted_path(const fs::path &src, const fs::path &dst) {
     if (dst.filename().empty()) {
-        if (!fs::exists(dst)) {
-            fs::create_directories(dst);
-        }
-
         return dst / src.filename();
-    } else if (!dst.parent_path().empty()) {
-        if (!fs::exists(dst.parent_path())) {
-            fs::create_directories(dst.parent_path());
-        }
     }
-
     return dst;
 }
 
