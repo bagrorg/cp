@@ -13,7 +13,7 @@ fs::path create_backup(const fs::path &p) {
     fs::path backup = p.parent_path() / fs::path(p.filename().string() + ".bk");
 
     errno = 0;
-    int res = linkat(0, p.string().c_str(), 0, backup.string().c_str(), 0);             //todo: copypaste???
+    int res = linkat(0, p.string().c_str(), 0, backup.string().c_str(), 0);
     if (res != 0) {
         throw std::runtime_error("Something wrong with file (backup): " + std::string(strerror(errno)));
     } else {
