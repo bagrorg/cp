@@ -65,7 +65,11 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        fs::remove(backup);
         return EXIT_FAILURE;
     }
+
+    fs::remove(backup);
+    return EXIT_SUCCESS;
 }
 
