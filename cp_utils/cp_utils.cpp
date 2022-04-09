@@ -138,29 +138,17 @@ void my_cp::copy_content(const fs::path &src, const fs::path &dst) {
     write_content(dst, get_content(src));
 }
 
-void my_cp::symlink_copy(const fs::path &src, const fs::path &dst) {
-    auto src_str = src.string();
-    auto dst_str = dst.string();
-
-    errno = 0;
-    int ret_code = symlink(src_str.c_str(), dst_str.c_str());
-    if (ret_code != 0) {
-        throw std::runtime_error(strerror(errno));
-    }
-    std::cout << "File successfully sym-linked!" << std::endl;
-}
-
 void my_cp::hardlink_copy(const fs::path &src, const fs::path &dst) {
     auto src_str = src.string();
     auto dst_str = dst.string();
 
     errno = 0;
-    int res = linkat(0, src_str.c_str(), 0, dst_str.c_str(), 0);        //todo: flags?
+    int res = linkat(0, src_str.c_str(), 0, dst_str.c_str(), 0);
     if (res != 0) {
         switch (errno) {
             case EXDEV:
                 std::cout << "Different file systems! Copying content." << std::endl;
-                copy_content(src, dst);
+                copy_content(src, dst);                                                             //Different fss for symlink == copy?
                 break;
 
             default:
@@ -172,13 +160,8 @@ void my_cp::hardlink_copy(const fs::path &src, const fs::path &dst) {
 }
 
 void my_cp::copy_main(const fs::path &src, const fs::path &dst) {
-    if (fs::is_symlink(src)) {
-        std::cout << "`src` is a sym-link. Trying to create a sym-link." << std::endl;
-        symlink_copy(src, dst);
-    } else {
-        std::cout << "Trying to create a hard-link." << std::endl;
-        hardlink_copy(src, dst);
-    }
+    std::cout << "Trying to create a hard-link." << std::endl;
+    hardlink_copy(src, dst);
 }
 
 

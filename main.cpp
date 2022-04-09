@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 
     fs::path src = argv[1];
     fs::path dst = argv[2];
-    src = fs::absolute(src);        //todo что делать с ~
+    src = fs::absolute(src);
     dst = fs::absolute(dst);
 
     try {
