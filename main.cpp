@@ -15,9 +15,9 @@ fs::path create_backup(const fs::path &p) {
     errno = 0;
     int res = linkat(0, p.string().c_str(), 0, backup.string().c_str(), 0);             //todo: copypaste???
     if (res != 0) {
-        throw std::runtime_error("Something wrong with file: " + std::string(strerror(errno)));
+        throw std::runtime_error("Something wrong with file (backup): " + std::string(strerror(errno)));
     } else {
-        std::cout << "File successfully hard-linked!" << std::endl;
+        std::cout << "Successfully created backup!" << std::endl;
     }
 
     return backup;
@@ -56,15 +56,15 @@ int main(int argc, char *argv[]) {
 
         my_cp::copy_main(src, dst);
     } catch(const std::exception &e) {
+        std::cerr << e.what() << std::endl;
         if (!backup.empty()) {
             errno = 0;
             int res = linkat(0, backup.string().c_str(), 0, dst.string().c_str(), 0);
             if (res != 0) {
-                throw std::runtime_error("Something wrong with file: " + std::string(strerror(errno)));         //todo: throw in catch?
+                std::cerr << "Error while recovering file: " << strerror(errno) << std::endl;
             }
         }
 
-        std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 }
