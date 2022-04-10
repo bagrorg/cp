@@ -9,31 +9,54 @@ void validate_input(const fs::path &src, const fs::path &dst) {
     if (dst.empty()) throw std::runtime_error("Empty `dst`");
 }
 
-fs::path create_backup(const fs::path &p) {
-    fs::path backup = p.parent_path() / fs::path(p.filename().string() + ".bk");
+class BackupFile {
+public:
+    BackupFile() = default;
+    void build(const fs::path &p) {
+        backup_path = p.parent_path() / fs::path(p.filename().string() + ".bk");
 
-    errno = 0;
-    int res = linkat(0, p.string().c_str(), 0, backup.string().c_str(), 0);
-    if (res != 0) {
-        throw std::runtime_error("Something wrong with file (backup): " + std::string(strerror(errno)));
-    } else {
-        std::cout << "Successfully created backup!" << std::endl;
+        errno = 0;
+        int res = linkat(0, p.string().c_str(), 0, backup_path.string().c_str(), 0);
+        if (res != 0) {
+            throw std::runtime_error("Something wrong with file (backup): " + std::string(strerror(errno)));
+        } else {
+            std::cout << "Successfully created backup!" << std::endl;
+        }
+
+        is_active = true;
     }
 
-    return backup;
-}
+    ~BackupFile() {
+        std::cout << "LOL" << std::endl;
+        if (is_active) {
+            fs::remove(backup_path);
+        }
+    }
 
-fs::path process_dst(const fs::path &p) {
+    bool isActive() const {
+        return is_active;
+    }
+
+    void copyTo(const fs::path &other) {
+        if (!is_active) throw std::runtime_error("Trying to copy backup file while it is not exists");
+
+        errno = 0;
+        int res = linkat(0, backup_path.string().c_str(), 0, other.string().c_str(), 0);
+        if (res != 0) {
+            std::cerr << "Error while recovering file: " << strerror(errno) << std::endl;
+        }
+    }
+
+private:
+    fs::path backup_path;
+    bool is_active = false;
+};
+
+void process_dst(const fs::path &p) {
     if (!fs::exists(p)) {
         if (!p.parent_path().empty()) {
             fs::create_directories(p.parent_path());
         }
-
-        return "";
-    } else {
-        auto backup = create_backup(p);
-        fs::remove(p);
-        return backup;
     }
 }
 
@@ -47,29 +70,29 @@ int main(int argc, char *argv[]) {
     fs::path dst = argv[2];
     src = fs::absolute(src);
     dst = fs::absolute(dst);
-    fs::path backup;
+    BackupFile backup;
 
     try {
         validate_input(src, dst);
         dst = path_processing::process_path(src, dst);
-        backup = process_dst(dst);
+        
+        if (!fs::exists(dst)) {
+            process_dst(dst);    
+        } else {
+            backup.build(dst);
+            fs::remove(dst);
+        }
 
         my_cp::copy_main(src, dst);
     } catch(const std::exception &e) {
         std::cerr << e.what() << std::endl;
-        if (!backup.empty()) {
-            errno = 0;
-            int res = linkat(0, backup.string().c_str(), 0, dst.string().c_str(), 0);
-            if (res != 0) {
-                std::cerr << "Error while recovering file: " << strerror(errno) << std::endl;
-            }
+        if (backup.isActive()) {
+            backup.copyTo(dst);
         }
-
-        fs::remove(backup);
+        
         return EXIT_FAILURE;
     }
 
-    fs::remove(backup);
     return EXIT_SUCCESS;
 }
 
