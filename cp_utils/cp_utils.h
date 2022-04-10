@@ -28,5 +28,8 @@ namespace my_cp {
 
     void copy_content(const fs::path &src, const fs::path &dst);
 
+    void copy_symlink(const fs::path &src, const fs::path &dst);
+    void copy_hardlink(const fs::path &src, const fs::path &dst);
+
     void copy_main(const fs::path &src, const fs::path &dst);
 }
