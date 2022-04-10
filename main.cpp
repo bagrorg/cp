@@ -59,6 +59,9 @@ int main(int argc, char *argv[]) {
     try {
         validate_input(src, dst);
         dst = path_processing::process_path(src, dst);
+        if (fs::equivalent(dst, src)) {
+            throw std::runtime_error("Can't do copy at the same folder with the same name");
+        }
         
         if (!fs::exists(dst)) {
             path_processing::recoursive_create(dst, true);    
