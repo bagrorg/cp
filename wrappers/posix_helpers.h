@@ -25,6 +25,8 @@ namespace posix_helpers {
     };
 
     void symlink(const std::string &__from, const std::string &__to);
+
     void linkat(int __fromfd, const std::string &__from, int __tofd, const std::string &__to, int __flags);
+
     std::string realpath(const std::string &__name);
 }

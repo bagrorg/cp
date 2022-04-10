@@ -6,7 +6,7 @@ class FileDescriptor {
 public:
     FileDescriptor() = default;
 
-    explicit FileDescriptor(const char* fn, int flags);
+    explicit FileDescriptor(const char *fn, int flags);
 
     ~FileDescriptor();
 
