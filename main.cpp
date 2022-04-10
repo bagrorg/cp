@@ -3,6 +3,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <cstring>
+#include "wrappers/posix_helpers.h"
 
 void validate_input(const fs::path &src, const fs::path &dst) {
     if (!fs::exists(src)) throw std::runtime_error("No such `src` file");
@@ -16,19 +17,13 @@ public:
     void build(const fs::path &p) {
         backup_path = p.parent_path() / fs::path(p.filename().string() + ".bk");
 
-        errno = 0;
-        int res = linkat(0, p.string().c_str(), 0, backup_path.string().c_str(), 0);
-        if (res != 0) {
-            throw std::runtime_error("Something wrong with file (backup): " + std::string(strerror(errno)));
-        } else {
-            std::cout << "Successfully created backup!" << std::endl;
-        }
+        posix_helpers::linkat(0, p.string().c_str(), 0, backup_path.string().c_str(), 0);
+        std::cout << "Successfully created backup!" << std::endl;
 
         is_active = true;
     }
 
     ~BackupFile() {
-        std::cout << "LOL" << std::endl;
         if (is_active) {
             fs::remove(backup_path);
         }
@@ -41,11 +36,7 @@ public:
     void copyTo(const fs::path &other) {
         if (!is_active) throw std::runtime_error("Trying to copy backup file while it is not exists");
 
-        errno = 0;
-        int res = linkat(0, backup_path.string().c_str(), 0, other.string().c_str(), 0);
-        if (res != 0) {
-            std::cerr << "Error while recovering file: " << strerror(errno) << std::endl;
-        }
+        posix_helpers::linkat(0, backup_path.string().c_str(), 0, other.string().c_str(), 0);
     }
 
 private:
