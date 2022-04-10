@@ -19,14 +19,11 @@ void my_cp::copy_hardlink(const fs::path &src, const fs::path &dst) {
     try {
         posix_helpers::linkat(0, src_str, 0, dst_str, 0);
     } catch (const posix_helpers::WrapperException &e) {
-        switch (e.get_error()) {
-            case posix_helpers::LINKAT_EXDEV:
-                std::cout << "Different file systems! Copying content." << std::endl;
-                detail::copy_content(src, dst);                                                            
-                break;
-
-            default:
-                throw e;
+        if (e.get_error() == posix_helpers::LINKAT_EXDEV) {
+            std::cout << "Different file systems! Copying content." << std::endl;
+                detail::copy_content(src, dst);   
+        } else {
+            throw e;
         }
     }
     
