@@ -6,30 +6,6 @@
 #include <fcntl.h>
 #include "content_copy.h"
 
-fs::path path_processing::process_existed_path(const fs::path &src, const fs::path &dst) {
-    fs::file_status s = fs::status(dst);
-
-    if (s.type() == fs::file_type::directory) {
-        return dst / src.filename();
-    }
-    return dst;
-}
-
-fs::path path_processing::process_unexisted_path(const fs::path &src, const fs::path &dst) {
-    if (dst.filename().empty()) {
-        return dst / src.filename();
-    }
-    return dst;
-}
-
-fs::path path_processing::process_path(const fs::path &src, const fs::path &dst) {
-    if (fs::exists(dst)) {
-        return process_existed_path(src, dst);
-    } else {
-        return process_unexisted_path(src, dst);
-    }
-}
-
 void my_cp::copy_symlink(const fs::path &src, const fs::path &dst) {        //is it solves problem with diff fss?
     errno = 0;
     char* orig_file_path = realpath(src.string().c_str(), NULL);

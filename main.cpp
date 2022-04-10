@@ -1,4 +1,5 @@
 #include "cp_utils/cp_utils.h"
+#include "cp_utils/path_processing.h"
 #include <iostream>
 #include <unistd.h>
 #include <cstring>
@@ -52,14 +53,6 @@ private:
     bool is_active = false;
 };
 
-void process_dst(const fs::path &p) {
-    if (!fs::exists(p)) {
-        if (!p.parent_path().empty()) {
-            fs::create_directories(p.parent_path());
-        }
-    }
-}
-
 int main(int argc, char *argv[]) {
     if (argc != 3) {
         std::cerr << "Not enough arguments" << std::endl;
@@ -77,7 +70,7 @@ int main(int argc, char *argv[]) {
         dst = path_processing::process_path(src, dst);
         
         if (!fs::exists(dst)) {
-            process_dst(dst);    
+            path_processing::recoursive_create(dst);    
         } else {
             backup.build(dst);
             fs::remove(dst);
