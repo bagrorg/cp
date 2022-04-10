@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     fs::path dst = argv[2];
     src = path_processing::normal_view(src);
     dst = path_processing::normal_view(dst);
-    std::unique_ptr<my_cp::BackUper> backup;
+    std::unique_ptr<my_cp::BackUper> backup = std::make_unique<my_cp::BackUper>();
 
     try {
         validate_input(src, dst);
@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
 
         my_cp::Copyier cp(src, dst);
         backup = cp.prepare();
+        backup->process(true);
         cp.copy();
     } catch(const std::exception &e) {
         std::cerr << e.what() << std::endl;

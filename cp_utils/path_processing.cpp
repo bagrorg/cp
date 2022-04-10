@@ -25,4 +25,8 @@ namespace path_processing {
             return process_unexisted_path(src, dst);
         }
     }
+
+    fs::path normal_view(const fs::path &p) {
+        return fs::absolute(p).lexically_normal();
+    }
 }

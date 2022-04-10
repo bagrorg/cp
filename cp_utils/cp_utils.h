@@ -14,8 +14,8 @@ namespace my_cp {
     class BackUper {
     public:
         virtual ~BackUper() = default;
-        virtual void process(bool verbose) = 0;
-        virtual void onDelete() = 0;
+        virtual void process(bool verbose);
+        virtual void onDelete();
     };
 
     class FileBackUper : public BackUper {

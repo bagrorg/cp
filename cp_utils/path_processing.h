@@ -11,7 +11,5 @@ namespace path_processing {
 
     fs::path process_path(const fs::path &src, const fs::path &dst);
 
-    fs::path normal_view(const fs::path &p) {
-        return fs::absolute(p).lexically_normal();
-    }
+    fs::path normal_view(const fs::path &p);
 }

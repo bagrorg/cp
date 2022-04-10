@@ -5,62 +5,63 @@
 
 namespace my_cp {
 
-FileBackUper::FileBackUper(const fs::path &p) : backup_file(p.parent_path() / fs::path(p.filename().string() + ".bk")), original_file(p) {}
+    FileBackUper::FileBackUper(const fs::path &p) : backup_file(
+            p.parent_path() / fs::path(p.filename().string() + ".bk")), original_file(p) {}
 
-FileBackUper::~FileBackUper() {
-    try {
-        if (fs::exists(backup_file)) {
-            fs::remove(backup_file);
+    FileBackUper::~FileBackUper() {
+        try {
+            if (fs::exists(backup_file)) {
+                fs::remove(backup_file);
+            }
+        } catch (const std::exception &e) {
+            std::cerr << "Problems with removing of backup file: " << e.what() << std::endl;
         }
-    } catch (const std::exception &e) {
-        std::cerr << "Problems with removing of backup file: " << e.what() << std::endl;
     }
-}
 
-void FileBackUper::onDelete() {
-    posix_helpers::linkat(0, backup_file.string(), 0, original_file.string(), 0);
-}
-
-void FileBackUper::process(bool verbose) {
-    posix_helpers::linkat(0, original_file.string(), 0, backup_file.string(), 0);
-    if (verbose) std::cout << "Successfully created backup!" << std::endl;
-    fs::remove(original_file);
-}
-
-CreatedDirsBackUper::CreatedDirsBackUper(const fs::path &p) : full_path(p) {
-    creating_root = "";
-    for (const auto &part: p) {
-        creating_root /= part;
-        if (!fs::exists(creating_root)) break;
+    void FileBackUper::onDelete() {
+        posix_helpers::linkat(0, backup_file.string(), 0, original_file.string(), 0);
     }
-}
 
-CreatedDirsBackUper::~CreatedDirsBackUper() {
-    try {
-        if (armed) {
-            if (fs::exists(creating_root)) {
-                fs::remove_all(creating_root);
+    void FileBackUper::process(bool verbose) {
+        posix_helpers::linkat(0, original_file.string(), 0, backup_file.string(), 0);
+        if (verbose) std::cout << "Successfully created backup!" << std::endl;
+        fs::remove(original_file);
+    }
+
+    CreatedDirsBackUper::CreatedDirsBackUper(const fs::path &p) : full_path(p) {
+        creating_root = "";
+        for (const auto &part: p) {
+            creating_root /= part;
+            if (!fs::exists(creating_root)) break;
+        }
+    }
+
+    CreatedDirsBackUper::~CreatedDirsBackUper() {
+        try {
+            if (armed) {
+                if (fs::exists(creating_root)) {
+                    fs::remove_all(creating_root);
+                }
+            }
+        } catch (const std::exception &e) {
+            std::cerr << "Problems with removing of created directories: " << e.what() << std::endl;
+        }
+    }
+
+    void CreatedDirsBackUper::onDelete() {
+        armed = true;
+    }
+
+    void CreatedDirsBackUper::process(bool verbose) {
+        fs::path rec = creating_root;
+        for (const auto &part: full_path.parent_path()) {
+            rec /= part;
+            if (!fs::exists(rec)) {
+                if (verbose) std::cout << "Creating " << rec << std::endl;
+                fs::create_directory(rec);
             }
         }
-    } catch (const std::exception &e) {
-        std::cerr << "Problems with removing of created directories: " << e.what() << std::endl;
     }
-}
-
-void CreatedDirsBackUper::onDelete() {
-    armed = true;
-}
-
-void CreatedDirsBackUper::process(bool verbose) {
-    fs::path rec = creating_root;
-    for (const auto& part: full_path.parent_path()) {
-        rec /= part;
-        if (!fs::exists(rec)) {
-            if (verbose) std::cout << "Creating " << rec << std::endl;
-            fs::create_directory(rec);
-        }
-    }
-}
 
     Copyier::Copyier(const fs::path &src, const fs::path &dst) : src(src), dst(dst) {}
 
@@ -84,10 +85,8 @@ void CreatedDirsBackUper::process(bool verbose) {
         std::unique_ptr<BackUper> backUper;
         if (!fs::exists(dst)) {
             backUper = std::make_unique<CreatedDirsBackUper>(dst);
-            backUper->process(true);
         } else {
             backUper = std::make_unique<FileBackUper>(dst);
-            backUper->process(true);
         }
         return backUper;
     }
@@ -114,4 +113,11 @@ void CreatedDirsBackUper::process(bool verbose) {
             }
         }
     }
+
+    void BackUper::process(bool verbose) {
+        if (verbose) std::cout << "Backuper wasn't created" << std::endl;
+    }
+
+    void BackUper::onDelete() {}
+
 } // namespace my_cp
