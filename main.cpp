@@ -19,14 +19,14 @@ int main(int argc, char *argv[]) {
 
     fs::path src = argv[1];
     fs::path dst = argv[2];
-    src = fs::absolute(src);
-    dst = fs::absolute(dst);
+    src = path_processing::normal_view(src);
+    dst = path_processing::normal_view(dst);
     std::unique_ptr<my_cp::BackUper> backup;
 
     try {
         validate_input(src, dst);
         dst = path_processing::process_path(src, dst);
-        if (fs::equivalent(dst, src)) {
+        if (src == dst) {
             throw std::runtime_error("Can't do copy at the same folder with the same name");
         }
 
