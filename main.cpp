@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         dst = path_processing::process_path(src, dst);
         
         if (!fs::exists(dst)) {
-            path_processing::recoursive_create(dst);    
+            path_processing::recoursive_create(dst, true);    
         } else {
             backup.build(dst);
             fs::remove(dst);

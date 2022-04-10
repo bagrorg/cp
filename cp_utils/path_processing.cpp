@@ -1,4 +1,5 @@
 #include "path_processing.h"
+#include <iostream>
 
 fs::path path_processing::process_existed_path(const fs::path &src, const fs::path &dst) {
     fs::file_status s = fs::status(dst);
@@ -24,10 +25,14 @@ fs::path path_processing::process_path(const fs::path &src, const fs::path &dst)
     }
 }
 
-void path_processing::recoursive_create(const fs::path &p) {
-    if (!fs::exists(p)) {
-        if (!p.parent_path().empty()) {
-            fs::create_directories(p.parent_path());
+void path_processing::recoursive_create(const fs::path &p, bool verbose) {
+    fs::path rec = "";
+
+    for (auto part: p.parent_path()) {
+        rec /= part;
+        if (!fs::exists(rec)) {
+            if (verbose) std::cout << "Creating " << rec << std::endl;
+            fs::create_directory(rec);
         }
     }
 }
