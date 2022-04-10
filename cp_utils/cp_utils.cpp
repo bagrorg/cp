@@ -10,8 +10,10 @@ namespace my_cp {
 
     FileBackUper::~FileBackUper() {
         try {
-            if (fs::exists(backup_file)) {
-                fs::remove(backup_file);
+            if (armed) {
+                if (fs::exists(backup_file)) {
+                    fs::remove(backup_file);
+                }
             }
         } catch (const std::exception &e) {
             std::cerr << "Problems with removing of backup file: " << e.what() << std::endl;
@@ -20,6 +22,7 @@ namespace my_cp {
 
     void FileBackUper::onDelete() {
         posix_helpers::linkat(0, backup_file.string(), 0, original_file.string(), 0);
+        armed = true;
     }
 
     void FileBackUper::process(bool verbose) {

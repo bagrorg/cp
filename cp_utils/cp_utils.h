@@ -27,6 +27,7 @@ namespace my_cp {
     private:
         fs::path backup_file;
         fs::path original_file;
+        bool armed = false;
     };
 
     class CreatedDirsBackUper : public BackUper {
