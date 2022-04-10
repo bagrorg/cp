@@ -80,5 +80,14 @@ class LDDTest(unittest.TestCase):
         self.assertEqual(os.WEXITSTATUS(return_code), FAILURE, "Wrong return code!")
 
     def test_src_is_dir(self):
-        return_code = os.system(f'{self.my_cp_path}/my_cp test_folder .')
+        return_code = os.system(f'{self.my_cp_path}/my_cp test_folder test_folder/new_ans.txt')
         self.assertEqual(os.WEXITSTATUS(return_code), FAILURE, "Wrong return code!")
+
+    def test_same_dirs(self):
+        return_code = os.system(f'{self.my_cp_path}/my_cp test.txt .')
+        self.assertEqual(os.WEXITSTATUS(return_code), FAILURE, "Wrong return code!")
+
+    def test_same_dirs(self):
+        return_code = os.system(f'{self.my_cp_path}/my_cp test.txt .')
+        self.assertEqual(os.WEXITSTATUS(return_code), FAILURE, "Wrong return code!")
+
