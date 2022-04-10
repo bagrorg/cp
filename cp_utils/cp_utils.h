@@ -13,17 +13,17 @@ namespace my_cp {
 
     class BackUper {
     public:
-        virtual ~BackUper() = 0;
-        virtual void process() = 0;
+        virtual ~BackUper() = default;
+        virtual void process(bool verbose) = 0;
         virtual void onDelete() = 0;
     };
 
     class FileBackUper : public BackUper {
     public:
-        FileBackUper(const fs::path &p);
-        virtual ~FileBackUper() override;
-        virtual void onDelete() override;
-        virtual void process() override;
+        explicit FileBackUper(const fs::path &p);
+        virtual ~FileBackUper();
+        void onDelete() override;
+        void process(bool verbose) override;
     private:
         fs::path backup_file;
         fs::path original_file;
@@ -31,16 +31,29 @@ namespace my_cp {
 
     class CreatedDirsBackUper : public BackUper {
     public:
-        CreatedDirsBackUper(const fs::path &p);
-        virtual ~CreatedDirsBackUper() override;
-        virtual void onDelete() override;
-        virtual void process() override;
+        explicit CreatedDirsBackUper(const fs::path &p);
+        virtual ~CreatedDirsBackUper();
+        void onDelete() override;
+        void process(bool verbose) override;
     private:
-        fs::path to_delete;
+        fs::path creating_root;
+        fs::path full_path;
+        bool armed = false;
     };
 
-    void copy_symlink(const fs::path &src, const fs::path &dst);
-    void copy_hardlink(const fs::path &src, const fs::path &dst);
+    class Copyier {
+    public:
+        Copyier(const fs::path &src, const fs::path &dst);
 
-    void copy_main(const fs::path &src, const fs::path &dst);
+        void copy();
+        std::unique_ptr<BackUper> prepare();
+
+    private:
+        void copy_symlink();
+        void copy_hardlink();
+
+        fs::path src;
+        fs::path dst;
+    };
+
 }
