@@ -18,16 +18,16 @@ void my_cp::copy_hardlink(const fs::path &src, const fs::path &dst) {
 
     try {
         posix_helpers::linkat(0, src_str, 0, dst_str, 0);
+        std::cout << "File successfully hard-linked!" << std::endl;
     } catch (const posix_helpers::WrapperException &e) {
         if (e.get_error() == posix_helpers::LINKAT_EXDEV) {
             std::cout << "Different file systems! Copying content." << std::endl;
-                detail::copy_content(src, dst);   
+            detail::copy_content(src, dst);
+            std::cout << "FIle successfully copied!" << std::endl;
         } else {
             throw e;
         }
     }
-    
-    std::cout << "File successfully hard-linked!" << std::endl;
 }
 
 void my_cp::copy_main(const fs::path &src, const fs::path &dst) {
