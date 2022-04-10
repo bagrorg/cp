@@ -4,9 +4,6 @@
 #include <filesystem>
 #include <vector>
 
-static constexpr size_t READ_CHUNK_SIZE = 4 * 1024;
-static constexpr size_t WRITE_CHUNK_SIZE = 4 * 1024;
-
 namespace fs = std::filesystem;
 
 namespace path_processing {
@@ -21,12 +18,6 @@ namespace my_cp {
     namespace detail {
 
     }
-
-    std::vector<char> get_content(const fs::path &p);
-
-    void write_content(const fs::path &p, const std::vector<char> &content);
-
-    void copy_content(const fs::path &src, const fs::path &dst);
 
     void copy_symlink(const fs::path &src, const fs::path &dst);
     void copy_hardlink(const fs::path &src, const fs::path &dst);
